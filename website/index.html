@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CornerGuard ML — Predictive vehicle stability warning for race cars</title>
+<meta name="description" content="CornerGuard ML estimates loss-of-control risk from steering, speed, yaw-rate and lateral-acceleration telemetry — warning a driver before instability becomes obvious. A research prototype and baseline ML system." />
+<link rel="icon" type="image/png" href="favicon.png" />
+<script>document.documentElement.classList.add('js');</script>
+<style>
+  :root{
+    --bg:#F0F0EC;
+    --bg-2:#FAFAF7;
+    --panel:#FFFFFF;
+    --panel-2:#FCFBF8;
+    --line:#E4E1DA;
+    --line-2:#D3CFC6;
+    --text:#191613;
+    --muted:#574F46;
+    --faint:#6F6658;
+
+    --brand:#F26A1E;
+    --brand-ink:#AF470B;
+    --brand-dim:#EBD9C9;
+    --gold:#F6B017;
+    --gold-ink:#946806;
+    --green:#22B26B;
+    --green-ink:#157A47;
+    --amber:#F6B017;
+    --amber-ink:#946806;
+    --red:#E5251D;
+    --red-ink:#C11A14;
+    --scr:#0E1115;
+    --scr-line:#23272E;
+    --scr-ink:#E9E7E2;
+    --scr-cmt:#7E8893;
+
+    --display:'Avenir Next','Segoe UI',system-ui,sans-serif;
+    --body:'Inter','Segoe UI',system-ui,sans-serif;
+    --mono:'SFMono-Regular','Roboto Mono',ui-monospace,monospace;
+
+    --maxw:1180px;
+    --pad:clamp(20px,5vw,64px);
+    --radius:14px;
+    --shadow:0 1px 2px rgba(40,32,22,.05),0 8px 24px -14px rgba(40,32,22,.18);
+
+    --z-grid:0; --z-base:1; --z-sticky:50;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--body);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;
+    background-image:
+      linear-gradient(to right,rgba(25,22,19,.04) 1px,transparent 1px),
+      linear-gradient(to bottom,rgba(25,22,19,.04) 1px,transparent 1px);
+    background-size:48px 48px;
+    mask-image:radial-gradient(ellipse 92% 60% at 50% 0%,#000 0%,transparent 72%);
+    -webkit-mask-image:radial-gradient(ellipse 92% 60% at 50% 0%,#000 0%,transparent 72%);
+    pointer-events:none;z-index:var(--z-grid);
+  }
+
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3,h4{font-family:var(--display);font-weight:700;line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding-left:var(--pad);padding-right:var(--pad);position:relative;z-index:var(--z-base)}
+
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--brand-ink);display:inline-flex;align-items:center;gap:9px}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--brand);opacity:.85}
+  .mono{font-family:var(--mono)}
+  header.nav{position:sticky;top:0;z-index:var(--z-sticky);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(240,240,236,.82);border-bottom:1px solid var(--line)}
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand-mark{height:34px;width:auto;display:block}
+  .brand-text{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.01em;color:var(--text)}
+  .brand-text .g{color:var(--red)}
+  .brand-text .ml{color:var(--brand-ink);font-size:13px;letter-spacing:.05em;margin-left:1px}
+  .nav-links{display:flex;align-items:center;gap:30px}
+  .nav-links a{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;color:var(--muted);transition:color .15s}
+  .nav-links a:hover{color:var(--brand-ink)}
+  .nav-cta{font-family:var(--mono);font-size:12.5px;letter-spacing:.03em;color:#22120a;background:var(--brand);padding:9px 15px;border-radius:8px;font-weight:600;transition:transform .15s,box-shadow .15s}
+  .nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(242,106,30,.35)}
+  @media (max-width:860px){.nav-links a:not(.nav-cta){display:none}}
+  .btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13.5px;letter-spacing:.02em;font-weight:500;padding:13px 20px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s,background .15s,border-color .15s}
+  .btn .arw{transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+  .btn:hover .arw{transform:translateX(3px)}
+  .btn-primary{background:var(--brand);color:#22120a;font-weight:600;box-shadow:0 6px 16px -6px rgba(242,106,30,.5)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 26px -8px rgba(242,106,30,.55)}
+  .btn-ghost{background:var(--panel);color:var(--text);border-color:var(--line-2)}
+  .btn-ghost:hover{border-color:var(--brand);color:var(--brand-ink);transform:translateY(-2px)}
+  .section{padding-top:clamp(72px,9vw,118px);padding-bottom:clamp(72px,9vw,118px);position:relative}
+  .section--alt{background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .section-head{max-width:680px;margin-bottom:46px}
+  .section-head h2{font-size:clamp(28px,4vw,42px);margin:16px 0 0}
+  .section-head p{color:var(--muted);font-size:17px;margin:16px 0 0;max-width:62ch;text-wrap:pretty}
+  .hero{position:relative;padding-top:clamp(54px,7vw,84px);padding-bottom:clamp(58px,7vw,92px);overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:1.02fr 1.18fr;gap:clamp(32px,4vw,60px);align-items:center}
+  @media (max-width:960px){.hero-grid{grid-template-columns:1fr;gap:38px}}
+  .hero h1{font-size:clamp(44px,7vw,80px);font-weight:800;letter-spacing:-.03em;margin-top:18px;line-height:.95}
+  .hero h1 .c1{color:var(--text)}
+  .hero h1 .c2{color:var(--red)}
+  .hero h1 .ml{color:var(--brand-ink)}
+  .hero-sub{font-family:var(--display);font-weight:500;font-size:clamp(19px,2.4vw,25px);color:var(--text);margin-top:16px;line-height:1.2}
+  .pulse{margin:18px 0 2px;height:26px;max-width:340px}
+  .pulse svg{width:100%;height:100%;display:block;overflow:visible}
+  .pulse path{fill:none;stroke:url(#pgrad);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 4px rgba(242,106,30,.35))}
+  .js .pulse path{stroke-dasharray:760;stroke-dashoffset:760;animation:trace 2.6s cubic-bezier(.6,0,.2,1) .3s forwards}
+  @keyframes trace{to{stroke-dashoffset:0}}
+  @media (prefers-reduced-motion:reduce){.js .pulse path{animation:none;stroke-dashoffset:0}}
+  .hero-support{color:var(--muted);font-size:16.5px;margin-top:16px;max-width:52ch;text-wrap:pretty}
+  .hero-support b{color:var(--text);font-weight:600}
+  .hero-cta{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap}
+  .hero-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
+  .chip{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:100px;padding:6px 12px;background:var(--panel)}
+  .chip b{color:var(--text);font-weight:600}
+  .telemetry{background:var(--panel);border:1px solid var(--line-2);border-radius:18px;padding:18px;position:relative;box-shadow:0 18px 50px -22px rgba(40,32,22,.30),0 2px 6px rgba(40,32,22,.06)}
+  .tm-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .tm-id{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase}
+  .tm-id b{color:var(--muted);font-weight:600}
+  .state-pill{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:7px 13px;border-radius:8px;border:1px solid currentColor;transition:color .3s,background .3s}
+  .state-pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+  .state-stable{color:var(--green-ink);background:rgba(34,178,107,.12)}
+  .state-warning{color:var(--amber-ink);background:rgba(246,176,23,.16)}
+  .state-critical{color:var(--red-ink);background:rgba(229,37,29,.10)}
+  .tm-canvas-wrap{position:relative;border-radius:10px;overflow:hidden;background:var(--scr);border:1px solid var(--scr-line)}
+  #riskCanvas{display:block;width:100%;height:208px}
+  .tm-axis{position:absolute;left:10px;top:8px;font-family:var(--mono);font-size:10px;color:#8b9099;letter-spacing:.08em}
+  .tm-now{position:absolute;right:34%;top:8px;font-family:var(--mono);font-size:10px;color:rgba(233,231,226,.72);letter-spacing:.08em}
+  .tm-horizon-lbl{position:absolute;right:10px;bottom:8px;font-family:var(--mono);font-size:10px;color:var(--gold);letter-spacing:.06em;opacity:.95}
+  .tm-readout{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .ro{background:var(--scr);border:1px solid var(--scr-line);border-radius:10px;padding:11px 13px}
+  .ro-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--scr-cmt)}
+  .ro-val{font-family:var(--display);font-weight:700;font-size:25px;margin-top:3px;line-height:1;font-variant-numeric:tabular-nums;color:var(--scr-ink)}
+  .ro-val small{font-size:13px;color:#9aa0a8;font-weight:500;font-family:var(--mono)}
+  .tm-traces{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .mini{background:var(--scr);border:1px solid var(--scr-line);border-radius:9px;padding:8px 10px}
+  .mini-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#8b9099;display:flex;justify-content:space-between}
+  .mini canvas{display:block;width:100%;height:34px;margin-top:5px}
+  .track{position:relative;margin-bottom:30px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+  .track-cap{position:absolute;top:20px;left:24px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);z-index:2;pointer-events:none}
+  #trackCanvas{display:block;width:100%;height:clamp(190px,26vw,262px)}
+  .track-legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:2px 10px 4px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .track-legend .k{display:inline-flex;align-items:center;gap:7px}
+  .track-legend .k i{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:36px}
+  @media (max-width:760px){.compare{grid-template-columns:1fr}}
+  .compare-card{border:1px solid var(--line);border-radius:var(--radius);padding:26px;background:var(--panel);box-shadow:var(--shadow)}
+  .compare-card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .compare-card h3{font-size:20px;margin:12px 0 8px}
+  .compare-card p{color:var(--muted);font-size:15px;margin:0;text-wrap:pretty}
+  .compare-card.past{background:var(--bg-2);box-shadow:none}
+  .compare-card.past h3{color:var(--muted)}
+  .compare-card.future{border-color:var(--brand);background:linear-gradient(180deg,rgba(242,106,30,.07),var(--panel))}
+  .compare-card.future h3{color:var(--brand-ink)}
+  .motiv-list{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  @media (max-width:760px){.motiv-list{grid-template-columns:1fr}}
+  .motiv-item{background:var(--panel);padding:22px 24px}
+  .motiv-item .n{font-family:var(--mono);font-size:12px;color:var(--brand-ink);font-weight:600}
+  .motiv-item h4{font-size:17px;margin:9px 0 6px;font-family:var(--display);font-weight:600}
+  .motiv-item p{color:var(--muted);font-size:14.5px;margin:0;text-wrap:pretty}
+  .pipeline{display:flex;align-items:stretch;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel);box-shadow:var(--shadow)}
+  .stage{flex:1 1 0;min-width:150px;padding:22px 20px;border-right:1px solid var(--line);position:relative}
+  .stage:last-child{border-right:none}
+  .stage .sx{font-family:var(--mono);font-size:11px;color:var(--brand-ink);letter-spacing:.08em}
+  .stage h4{font-family:var(--display);font-weight:600;font-size:17px;margin:10px 0 7px}
+  .stage p{color:var(--muted);font-size:13.5px;margin:0}
+  .stage .arrow{position:absolute;right:-9px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--brand);background:var(--panel);border-radius:50%;z-index:2}
+  @media (max-width:760px){.stage{flex:1 1 100%;border-right:none;border-bottom:1px solid var(--line)}.stage:last-child{border-bottom:none}.stage .arrow{display:none}}
+  .stage.out{background:linear-gradient(180deg,rgba(242,106,30,.07),var(--panel))}
+  .io-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+  @media (max-width:680px){.io-grid{grid-template-columns:1fr}}
+  .io-box{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:var(--panel);box-shadow:var(--shadow)}
+  .io-box h4{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand-ink);font-weight:600;margin-bottom:14px}
+  .io-box ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+  .io-box li{font-family:var(--mono);font-size:12.5px;color:var(--text);background:var(--bg-2);border:1px solid var(--line);padding:7px 11px;border-radius:7px}
+  .io-box li.opt{color:var(--muted);border-style:dashed}
+  .io-out p{margin:0 0 10px;font-size:14.5px;color:var(--muted);text-wrap:pretty}
+  .io-out .states{display:flex;gap:8px;margin-top:14px}
+  .io-out .s{flex:1;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:9px;border-radius:7px;border:1px solid currentColor;font-weight:600}
+  .s.g{color:var(--green-ink)}.s.a{color:var(--amber-ink)}.s.r{color:var(--red-ink)}
+  .model-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:start}
+  @media (max-width:860px){.model-grid{grid-template-columns:1fr}}
+  .eq-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow)}
+  .eq{font-family:var(--mono);background:var(--scr);border:1px solid var(--scr-line);border-radius:10px;padding:18px 20px;font-size:16px;color:var(--scr-ink);margin:0 0 14px;overflow-x:auto}
+  .eq .v{color:var(--gold)}
+  .eq .c{color:var(--scr-cmt)}
+  .eq-card p{color:var(--muted);font-size:14.5px;margin:0 0 10px;text-wrap:pretty}
+  .eq-card p:last-child{margin-bottom:0}
+  .eq-card .legend{display:grid;gap:7px;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--line)}
+  .eq-card .legend div{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .eq-card .legend b{color:var(--brand-ink);font-weight:600}
+  .uo{display:grid;gap:12px}
+  .uo-card{border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;background:var(--panel);box-shadow:var(--shadow)}
+  .uo-card .h{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:600;font-size:17px}
+  .uo-card .h .badge{font-family:var(--mono);font-size:10.5px;padding:4px 8px;border-radius:6px;letter-spacing:.06em;font-weight:600}
+  .uo-card.under .badge{color:var(--amber-ink);border:1px solid var(--amber-ink);background:rgba(246,176,23,.10)}
+  .uo-card.over .badge{color:var(--red-ink);border:1px solid var(--red-ink);background:rgba(229,37,29,.07)}
+  .uo-card p{margin:11px 0 0;color:var(--muted);font-size:14px;text-wrap:pretty}
+  .uo-card code{font-family:var(--mono);color:var(--text);font-size:13px;background:var(--bg-2);padding:1px 5px;border-radius:4px}
+  .roadmap{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  @media (max-width:1020px){.roadmap{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:680px){.roadmap{grid-template-columns:1fr}}
+  .rm-card{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:26px;background:var(--panel);overflow:hidden;box-shadow:var(--shadow)}
+  .rm-card .ver{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--brand-ink);text-transform:uppercase;font-weight:600}
+  .rm-card h3{font-size:21px;margin:12px 0 10px}
+  .rm-card p{color:var(--muted);font-size:14.5px;margin:0;text-wrap:pretty}
+  .rm-card .stat{margin-top:16px;font-family:var(--mono);font-size:11.5px;color:var(--faint);display:inline-flex;align-items:center;gap:7px}
+  .rm-card .barline{position:absolute;left:0;top:0;height:3px;width:100%;background:var(--line)}
+  .rm-card .barline i{position:absolute;left:0;top:0;height:100%;display:block;background:var(--brand)}
+  .rm-card.v1 .barline i{width:100%}
+  .rm-card.v2 .barline i{width:42%}
+  .rm-card.v3 .barline i{width:14%}
+  .rm-card .now{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:5px;border:1px solid var(--brand);color:var(--brand-ink);background:rgba(242,106,30,.07);position:absolute;top:22px;right:22px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+  @media (max-width:900px){.split{grid-template-columns:1fr}}
+  .filetree{background:var(--scr);border:1px solid var(--scr-line);border-radius:var(--radius);padding:18px 24px;font-family:var(--mono);font-size:13.5px;line-height:1.95;overflow-x:auto;white-space:pre;color:var(--scr-ink);box-shadow:var(--shadow)}
+  .filetree .dir{color:var(--brand)}
+  .filetree .file{color:var(--scr-ink)}
+  .filetree .cmt{color:var(--scr-cmt)}
+  .filetree .sc{color:var(--gold)}
+  .terminal{background:var(--scr);border:1px solid var(--scr-line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .term-bar{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--scr-line);background:#14181d}
+  .term-bar .d{width:11px;height:11px;border-radius:50%}
+  .term-bar .d:nth-child(1){background:var(--red)}
+  .term-bar .d:nth-child(2){background:var(--gold)}
+  .term-bar .d:nth-child(3){background:var(--green)}
+  .term-bar span{margin-left:8px;font-family:var(--mono);font-size:11.5px;color:var(--scr-cmt);letter-spacing:.05em}
+  .term-body{padding:18px 20px;font-family:var(--mono);font-size:13px;line-height:1.95;overflow-x:auto;color:var(--scr-ink)}
+  .term-body .line{white-space:pre;display:block}
+  .term-body .p{color:var(--gold)}
+  .term-body .cmd{color:var(--scr-ink)}
+  .term-body .cmt{color:var(--scr-cmt)}
+  .term-body .flag{color:var(--brand)}
+  .copy-btn{float:right;font-family:var(--mono);font-size:11px;color:#9aa0a8;background:transparent;border:1px solid var(--scr-line);border-radius:6px;padding:5px 10px;cursor:pointer;transition:.15s}
+  .copy-btn:hover{color:var(--gold);border-color:var(--gold)}
+  .safety{border:1px solid var(--gold);border-left:4px solid var(--gold);border-radius:var(--radius);background:linear-gradient(180deg,rgba(246,176,23,.10),rgba(246,176,23,.03));padding:30px clamp(24px,4vw,40px);display:flex;gap:22px;align-items:flex-start}
+  @media (max-width:680px){.safety{flex-direction:column;gap:14px}}
+  .safety .ic{flex:none;width:46px;height:46px;color:var(--gold-ink)}
+  .safety h3{font-size:21px;margin:0 0 12px}
+  .safety ul{margin:0;padding-left:0;list-style:none;display:grid;gap:9px}
+  .safety li{color:var(--muted);font-size:15px;padding-left:22px;position:relative;text-wrap:pretty}
+  .safety li::before{content:"\203A";position:absolute;left:4px;top:0;color:var(--gold-ink);font-family:var(--mono);font-weight:700}
+  .safety li b{color:var(--text);font-weight:600}
+  footer{border-top:1px solid var(--line);padding:46px 0 60px;position:relative;z-index:var(--z-base);background:var(--bg-2)}
+  .foot-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+  .foot-logo{height:72px;width:auto;display:block;margin-bottom:16px}
+  .foot-note{font-family:var(--mono);font-size:12px;color:var(--faint);max-width:56ch;line-height:1.7}
+  .foot-note b{color:var(--muted);font-weight:600}
+  .foot-links{display:flex;gap:22px;font-family:var(--mono);font-size:12.5px}
+  .foot-links a{color:var(--muted)}
+  .foot-links a:hover{color:var(--brand-ink)}
+  .js .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+  .js .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}}
+
+  :focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="CornerGuard ML home">
+      <img class="brand-mark" src="mark.png" alt="CornerGuard ML" />
+      <span class="brand-text">Corner<span class="g">Guard</span><span class="ml">ML</span></span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#motivation">Motivation</a>
+      <a href="#how">How it works</a>
+      <a href="#model">Vehicle model</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#quickstart">Quick start</a>
+      <a class="nav-cta" href="#quickstart">Run demo</a>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Predictive stability · research prototype</span>
+      <h1><span class="c1">Corner</span><span class="c2">Guard</span> <span class="ml">ML</span></h1>
+      <p class="hero-sub">Predictive vehicle stability warning for race cars.</p>
+      <div class="pulse" aria-hidden="true">
+        <svg viewBox="0 0 380 26" preserveAspectRatio="none">
+          <defs><linearGradient id="pgrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#F6B017"/><stop offset="0.6" stop-color="#F26A1E"/><stop offset="1" stop-color="#E5251D"/>
+          </linearGradient></defs>
+          <path d="M0 14 L150 14 L160 14 L168 8 L176 20 L184 2 L192 22 L200 11 L208 14 L380 14"/>
+        </svg>
+      </div>
+      <p class="hero-support">Most dashboards show what already happened. CornerGuard reads steering, speed, yaw rate and lateral acceleration to estimate whether the car is likely to <b>lose grip in the next 0.5&ndash;1.5&nbsp;seconds</b> if the driver holds the current inputs &mdash; flagging risk before instability is obvious.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#how">View architecture <svg class="arw" width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="btn btn-ghost" href="#quickstart">Run the demo pipeline <svg class="arw" width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </div>
+      <div class="hero-chips">
+        <span class="chip"><b>Inputs:</b> steering · yaw · lateral g</span>
+        <span class="chip"><b>Horizon:</b> 0.5&ndash;1.5 s ahead</span>
+        <span class="chip"><b>Stack:</b> embedded firmware + supervised ML</span>
+      </div>
+    </div>
+
+    <div class="telemetry reveal" id="telemetry">
+      <div class="tm-top">
+        <span class="tm-id"><b>RUN_217</b> · grip-risk estimate · sim</span>
+        <span class="state-pill state-stable" id="statePill"><span class="dot"></span><span id="stateText">Stable</span></span>
+      </div>
+      <div class="tm-canvas-wrap">
+        <canvas id="riskCanvas" aria-label="Animated grip-risk telemetry trace with prediction horizon"></canvas>
+        <span class="tm-axis">RISK 0–1</span>
+        <span class="tm-now">NOW</span>
+        <span class="tm-horizon-lbl">◀ predicted horizon</span>
+      </div>
+      <div class="tm-readout">
+        <div class="ro"><div class="ro-label">Loss-of-control p</div><div class="ro-val" id="roProb">0.18</div></div>
+        <div class="ro"><div class="ro-label">Time to limit</div><div class="ro-val" id="roTtl">—<small> s</small></div></div>
+        <div class="ro"><div class="ro-label">Lateral load</div><div class="ro-val" id="roG">0.9<small> g</small></div></div>
+      </div>
+      <div class="tm-traces">
+        <div class="mini">
+          <div class="mini-lbl"><span>Steering angle</span><span id="steerVal">+0°</span></div>
+          <canvas id="steerCanvas"></canvas>
+        </div>
+        <div class="mini">
+          <div class="mini-lbl"><span>Yaw rate</span><span id="yawVal">0°/s</span></div>
+          <canvas id="yawCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt" id="motivation">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Motivation</span>
+      <h2>Race cars live at the grip limit. CornerGuard watches the edge.</h2>
+      <p>A race car is driven on purpose right up against the tire's grip ceiling. There, a small change in steering, brake release, throttle, surface or speed can tip into understeer, oversteer, or a track exit within a fraction of a second.</p>
+    </div>
+<div class="track reveal">
+      <span class="track-cap">Simulated racing line · S-chicane</span>
+      <canvas id="trackCanvas" aria-label="Animated car driving the racing line through a corner; grip risk shifts green to amber to red, peaking at the apex"></canvas>
+      <div class="track-legend">
+        <span class="k"><i style="background:var(--green)"></i>Stable</span>
+        <span class="k"><i style="background:var(--amber)"></i>Warning</span>
+        <span class="k"><i style="background:var(--red)"></i>Critical</span>
+        <span class="k" style="margin-left:auto;color:var(--faint)">Grip risk peaks at the apex, where lateral load is highest.</span>
+      </div>
+    </div>
+    <div class="compare reveal">
+      <div class="compare-card past">
+        <span class="tag">Conventional telemetry</span>
+        <h3>Reports the past</h3>
+        <p>Standard dashboards plot what already occurred — the slide, the lockup, the off. By the time the trace shows it, the driver has already felt it.</p>
+      </div>
+      <div class="compare-card future">
+        <span class="tag">CornerGuard</span>
+        <h3>Estimates the next moment</h3>
+        <p>It projects current inputs forward and asks a different question: is this combination of steering, speed and rotation about to exceed what the tires can hold?</p>
+      </div>
+    </div>
+    <div class="motiv-list reveal">
+      <div class="motiv-item"><span class="n">01</span><h4>Earlier cues for the driver</h4><p>An advance warning state gives a margin to ease an input before the car is already rotating or pushing.</p></div>
+      <div class="motiv-item"><span class="n">02</span><h4>Sharper engineering review</h4><p>Risk segments mark exactly where a setup is sketchy, turning vague "felt loose" feedback into a labeled trace.</p></div>
+      <div class="motiv-item"><span class="n">03</span><h4>Honest setup comparison</h4><p>Two configurations can be compared by how much time each spends near the predicted limit through the same corner.</p></div>
+      <div class="motiv-item"><span class="n">04</span><h4>Faster post-run analysis</h4><p>Logged warning and critical windows let a team jump straight to the moments that matter instead of scrubbing whole laps.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">How it works</span>
+      <h2>From raw telemetry to a forward-looking warning state</h2>
+      <p>A short rolling window of signals feeds a classifier trained to recognize the run-up to instability, not just instability itself.</p>
+    </div>
+    <div class="pipeline reveal">
+      <div class="stage"><span class="sx">01 · ingest</span><h4>Telemetry</h4><p>Steering, speed, yaw rate and lateral g sampled from the car or simulator.</p><svg class="arrow" viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="stage"><span class="sx">02 · buffer</span><h4>2 s rolling window</h4><p>Recent samples are framed into a fixed window of context the model can read.</p><svg class="arrow" viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="stage"><span class="sx">03 · infer</span><h4>Future-risk classifier</h4><p>The model estimates the probability that grip is lost within the prediction horizon.</p><svg class="arrow" viewBox="0 0 16 16" fill="none"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="stage out"><span class="sx">04 · output</span><h4>Stable / warning / critical</h4><p>A probability and a discrete warning state, ready to log or surface live.</p></div>
+    </div>
+    <div class="io-grid reveal">
+      <div class="io-box">
+        <h4>Inputs</h4>
+        <ul><li>steering angle</li><li>steering rate</li><li>speed</li><li>yaw rate</li><li>lateral acceleration</li><li class="opt">throttle (optional)</li><li class="opt">brake (optional)</li></ul>
+      </div>
+      <div class="io-box io-out">
+        <h4>Output</h4>
+        <p>A continuous loss-of-control probability for the upcoming window, mapped onto a three-level warning state for drivers and engineers.</p>
+        <div class="states"><div class="s g">Stable</div><div class="s a">Warning</div><div class="s r">Critical</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt" id="model">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Vehicle model</span>
+      <h2>A bicycle model gives the math a physical anchor</h2>
+      <p>Before any learning, a simple single-track model predicts how fast the car should be rotating for a given steering angle and speed. The gap between expected and measured rotation is a physically meaningful feature.</p>
+    </div>
+    <div class="model-grid reveal">
+      <div class="eq-card">
+        <div class="eq"><span class="c"># expected yaw rate (single-track / bicycle model)</span><br>r_expected = (<span class="v">v</span> / <span class="v">L</span>) · tan(<span class="v">δ</span>)</div>
+        <div class="eq"><span class="c"># how far reality departs from the model</span><br>yaw_error = <span class="v">r_measured</span> − <span class="v">r_expected</span></div>
+        <p>The expected yaw rate is what the geometry predicts for the current speed and steering. The yaw error captures how much the real car disagrees with that prediction — the signal that something at the tires is changing.</p>
+        <div class="legend">
+          <div><b>v</b> &nbsp;forward speed</div>
+          <div><b>L</b> &nbsp;wheelbase</div>
+          <div><b>δ</b> &nbsp;front steering angle</div>
+          <div><b>r</b> &nbsp;yaw rate (rotation about vertical axis)</div>
+        </div>
+      </div>
+      <div class="uo">
+        <div class="uo-card under"><div class="h">Understeer <span class="badge">FRONT WASHES OUT</span></div><p>When <code>|r_measured| &lt; |r_expected|</code>, the car turns less than the steering commands. The front axle is saturating: the nose pushes wide of the intended line.</p></div>
+        <div class="uo-card over"><div class="h">Oversteer <span class="badge">REAR STEPS OUT</span></div><p>When <code>|r_measured| &gt; |r_expected|</code>, the car rotates faster than the geometry predicts. The rear is losing grip and the tail begins to come around.</p></div>
+        <div class="eq-card" style="padding:18px 20px"><p style="margin:0">Sign and magnitude of <code style="color:var(--brand-ink)">yaw_error</code>, together with steering rate and lateral load, let the classifier separate a planted car from one drifting toward either failure mode — well before it fully lets go.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="roadmap">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">ML roadmap</span>
+      <h2>Start simple and interpretable, grow toward sequence models</h2>
+      <p>The baseline is intentionally boring and explainable. Later versions add temporal modeling as the dataset and validation mature.</p>
+    </div>
+    <div class="roadmap reveal">
+      <div class="rm-card v1"><span class="barline"><i></i></span><span class="now">Baseline</span><span class="ver">Version 1</span><h3>Random Forest / XGBoost</h3><p>Tree ensembles over engineered features from the last 2 seconds of telemetry. Fast, interpretable, and a clear accuracy floor to beat.</p><span class="stat">▣ tabular window features</span></div>
+      <div class="rm-card v2"><span class="barline"><i></i></span><span class="ver">Version 2</span><h3>LSTM / Temporal CNN</h3><p>Sequence models that read the raw signal window directly, learning temporal patterns the hand-built features miss.</p><span class="stat">▣ learned temporal structure</span></div>
+      <div class="rm-card v3"><span class="barline"><i></i></span><span class="ver">Version 3</span><h3>Transformer sequence</h3><p>Attention over longer telemetry sequences for richer context and multi-signal prediction across a corner.</p><span class="stat">▣ long-range attention</span></div>
+      <div class="rm-card v2"><span class="barline"><i></i></span><span class="ver">Interface</span><h3>Desktop dashboard</h3><p>Replay CSV logs, inspect yaw error, and highlight warning zones so engineers can compare drivers and setups.</p><span class="stat">▣ CSV replay · telemetry plots</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt" id="quickstart">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Project structure &amp; quick start</span>
+      <h2>One repo: embedded firmware plus a Python ML toolkit</h2>
+      <p>Firmware lives alongside the model code, with scripts to generate simulated data, train the baseline, replay inference over a run, and feed a future desktop dashboard.</p>
+    </div>
+    <div class="split">
+      <div class="reveal">
+        <div class="filetree" aria-label="Project structure"><span class="cmt"># repository layout</span>
+cornerguard/
+├── <span class="dir">src/</span>            <span class="cmt"># embedded firmware</span>
+├── <span class="dir">include/</span>        <span class="cmt"># firmware headers</span>
+├── <span class="dir">cornerguard_ml/</span> <span class="cmt"># python ml tools</span>
+├── <span class="dir">scripts/</span>
+│   ├── <span class="sc">generate_sim_data.py</span>
+│   ├── <span class="sc">train_baseline.py</span>
+│   └── <span class="sc">replay_inference.py</span>
+├── <span class="dir">data/processed/</span>
+└── <span class="dir">models/</span></div>
+      </div>
+      <div class="reveal">
+        <div class="terminal">
+          <div class="term-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span>bash — cornerguard</span></div>
+          <div class="term-body" id="termBody"><button class="copy-btn" id="copyBtn" aria-label="Copy quick start commands">copy</button><span class="line"><span class="cmt"># set up an isolated environment</span></span><span class="line"><span class="p">$</span> <span class="cmd">python3 -m venv .venv</span></span><span class="line"><span class="p">$</span> <span class="cmd">source .venv/bin/activate</span></span><span class="line"><span class="p">$</span> <span class="cmd">pip install -e <span class="flag">".[ml,test]"</span></span></span><span class="line"> </span><span class="line"><span class="cmt"># generate simulated cornering data</span></span><span class="line"><span class="p">$</span> <span class="cmd">python scripts/generate_sim_data.py <span class="flag">--runs</span> 200 \</span></span><span class="line"><span class="cmd">      <span class="flag">--out</span> data/processed/simulated_cornering.csv</span></span><span class="line"> </span><span class="line"><span class="cmt"># train the baseline classifier</span></span><span class="line"><span class="p">$</span> <span class="cmd">python scripts/train_baseline.py \</span></span><span class="line"><span class="cmd">      <span class="flag">--data</span> data/processed/simulated_cornering.csv \</span></span><span class="line"><span class="cmd">      <span class="flag">--model-out</span> models/cornerguard_baseline.joblib</span></span><span class="line"> </span><span class="line"><span class="cmt"># replay inference over a run</span></span><span class="line"><span class="p">$</span> <span class="cmd">python scripts/replay_inference.py \</span></span><span class="line"><span class="cmd">      <span class="flag">--data</span> data/processed/simulated_cornering.csv \</span></span><span class="line"><span class="cmd">      <span class="flag">--model</span> models/cornerguard_baseline.joblib</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="safety">
+  <div class="wrap">
+    <div class="safety reveal">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 2.5 20.5h19L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.05" fill="currentColor"/></svg>
+      <div>
+        <h3>Safety note</h3>
+        <ul>
+          <li>CornerGuard is a <b>warning, logging and analysis system</b> — it estimates and reports risk only.</li>
+          <li>In this first version it <b>must not control steering, throttle or braking</b>, and is not wired to any actuator.</li>
+          <li>It is a <b>research prototype and baseline ML system</b>, not a production- or safety-certified product, and accuracy is not guaranteed.</li>
+          <li>Any on-car testing should happen <b>only in safe, controlled environments</b> with appropriate supervision.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div>
+      <a href="#top" aria-label="CornerGuard ML"><img class="foot-logo" src="logo.png" alt="CornerGuard ML" /></a>
+      <p class="foot-note"><b>CornerGuard ML</b> — predictive vehicle stability warning. Grounded in telemetry, single-track vehicle dynamics, embedded firmware and supervised machine learning. Research prototype; not a safety-certified product.</p>
+      <p class="foot-note">© 2026 wuisabel-gif. All rights reserved.</p>
+    </div>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="#how">Architecture</a>
+      <a href="#model">Vehicle model</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#safety">Safety</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var reveals = document.querySelectorAll('.reveal');
+  if('IntersectionObserver' in window && !reduce){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+    },{threshold:.16});
+    reveals.forEach(function(r){ io.observe(r); });
+  } else {
+    reveals.forEach(function(r){ r.classList.add('in'); });
+  }
+
+  var copyBtn = document.getElementById('copyBtn');
+  if(copyBtn){
+    copyBtn.addEventListener('click', function(){
+      var cmds = [
+        "python3 -m venv .venv",
+        "source .venv/bin/activate",
+        'pip install -e ".[ml,test]"',
+        "python scripts/generate_sim_data.py --runs 200 --out data/processed/simulated_cornering.csv",
+        "python scripts/train_baseline.py --data data/processed/simulated_cornering.csv --model-out models/cornerguard_baseline.joblib",
+        "python scripts/replay_inference.py --data data/processed/simulated_cornering.csv --model models/cornerguard_baseline.joblib"
+      ].join("\n");
+      var done = function(){ copyBtn.textContent='copied'; setTimeout(function(){copyBtn.textContent='copy';},1400); };
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(cmds).then(done).catch(done); }
+      else { done(); }
+    });
+  }
+
+  var canvas = document.getElementById('riskCanvas');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var steerC = document.getElementById('steerCanvas'), steerX = steerC.getContext('2d');
+  var yawC = document.getElementById('yawCanvas'), yawX = yawC.getContext('2d');
+
+  var W=0,H=0,SW=0,SH=0,YW=0,YH=0,dpr=Math.min(window.devicePixelRatio||1,2);
+  function size(){
+    function set(cv,cx){
+      var r=cv.getBoundingClientRect();
+      cv.width=Math.max(1,r.width*dpr); cv.height=Math.max(1,r.height*dpr);
+      cx.setTransform(dpr,0,0,dpr,0,0);
+      return [r.width,r.height];
+    }
+    var a=set(canvas,ctx); W=a[0];H=a[1];
+    var b=set(steerC,steerX); SW=b[0];SH=b[1];
+    var c=set(yawC,yawX); YW=c[0];YH=c[1];
+  }
+  size();
+  window.addEventListener('resize', size);
+
+  var N = 150;
+  var risk = new Array(N).fill(0.16);
+  var steer = new Array(N).fill(0);
+  var yaw = new Array(N).fill(0);
+  var t = 0;
+  var event = {active:false, t0:0, dur:0, peak:0};
+  var lastG = 0.9;
+
+  function corner(phase){ return 0.12 + 0.05*Math.sin(phase*0.6) + 0.03*Math.sin(phase*1.7+1); }
+
+  function step(){
+    t += 0.016;
+    if(!event.active && Math.random() < 0.012){
+      event.active=true; event.t0=t; event.dur=1.6+Math.random()*1.8; event.peak=0.55+Math.random()*0.42;
+    }
+    var base = corner(t);
+    var r = base + (Math.random()-0.5)*0.03;
+    var s = Math.sin(t*1.1)*0.4;
+    if(event.active){
+      var e=(t-event.t0)/event.dur;
+      if(e>=1){ event.active=false; }
+      else {
+        var shape = Math.sin(Math.PI*Math.min(e,1));
+        r = base + shape*event.peak;
+        s = Math.sin(t*1.1)*0.4 + shape*0.7*(event.peak>0.85?1:0.7);
+      }
+    }
+    r = Math.max(0.02, Math.min(0.99, r));
+    risk.push(r); risk.shift();
+    steer.push(s); steer.shift();
+    yaw.push(s*0.8 + (r-base)*0.6 + (Math.random()-0.5)*0.04); yaw.shift();
+    lastG = 0.8 + r*1.7 + Math.sin(t*0.9)*0.1;
+  }
+
+  function predict(){
+    var k=10;
+    var a=risk[N-1-k], b=risk[N-1];
+    var slope=(b-a)/k;
+    var pts=[]; var M=44; var cur=b;
+    for(var i=0;i<M;i++){
+      cur = cur + slope*(1 - i/M);
+      cur = Math.max(0.02, Math.min(1.05, cur));
+      pts.push(cur);
+    }
+    return pts;
+  }
+
+  var cssCache={};
+  function getCss(name){
+    if(cssCache[name]) return cssCache[name];
+    var v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    cssCache[name]=v; return v;
+  }
+  function colorFor(v){
+    if(v < 0.45) return getCss('--green');
+    if(v < 0.72) return getCss('--amber');
+    return getCss('--red');
+  }
+  function hexA(hex,a){
+    hex=hex.replace('#',''); if(hex.length===3){hex=hex.split('').map(function(c){return c+c;}).join('');}
+    var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);
+    return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+
+  var pill=document.getElementById('statePill'), stateText=document.getElementById('stateText');
+  var roProb=document.getElementById('roProb'), roTtl=document.getElementById('roTtl'), roG=document.getElementById('roG');
+  var steerVal=document.getElementById('steerVal'), yawVal=document.getElementById('yawVal');
+
+  function drawMini(cx,arr,w,h,scale,col){
+    cx.clearRect(0,0,w,h);
+    cx.lineWidth=1.5; cx.strokeStyle=col; cx.beginPath();
+    var mid=h/2;
+    for(var i=0;i<arr.length;i++){
+      var x=i/(arr.length-1)*w;
+      var y=mid - arr[i]*scale*mid;
+      y=Math.max(2,Math.min(h-2,y));
+      if(i===0)cx.moveTo(x,y); else cx.lineTo(x,y);
+    }
+    cx.stroke();
+    cx.strokeStyle=hexA('#7A6D60',.3); cx.lineWidth=1; cx.beginPath();
+    cx.moveTo(0,mid); cx.lineTo(w,mid); cx.stroke();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    var pastW = W*0.66;
+    var nowX = pastW;
+    var horW = W - pastW;
+
+    ctx.fillStyle = hexA(getCss('--amber'),.05);
+    ctx.fillRect(nowX,0,horW,H);
+
+    function thresh(v,col){
+      var y=H-(v*H);
+      ctx.strokeStyle=hexA(col,.32); ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); ctx.setLineDash([]);
+    }
+    thresh(0.45,getCss('--amber'));
+    thresh(0.72,getCss('--red'));
+
+    ctx.strokeStyle='rgba(255,255,255,.055)'; ctx.lineWidth=1;
+    for(var gx=0; gx<=4; gx++){ var X=gx/4*pastW; ctx.beginPath(); ctx.moveTo(X,0); ctx.lineTo(X,H); ctx.stroke(); }
+
+    function yOf(v){ return H - v*H; }
+
+    var near = Math.max(risk[N-1], predict()[8]||risk[N-1]);
+    var prob = Math.min(0.99, near);
+    var stCol = colorFor(prob);
+
+    var grad=ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,hexA(stCol,.28));
+    grad.addColorStop(1,hexA(stCol,0));
+    ctx.beginPath();
+    ctx.moveTo(0,H);
+    for(var i=0;i<N;i++){ var x=i/(N-1)*pastW; ctx.lineTo(x,yOf(risk[i])); }
+    ctx.lineTo(pastW,H); ctx.closePath();
+    ctx.fillStyle=grad; ctx.fill();
+
+    ctx.beginPath();
+    for(i=0;i<N;i++){ x=i/(N-1)*pastW; var y=yOf(risk[i]); if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+    ctx.lineWidth=2; ctx.strokeStyle=stCol; ctx.stroke();
+
+    var pred=predict();
+    var peak=Math.max.apply(null,pred);
+    var predCol=colorFor(peak);
+    ctx.beginPath();
+    ctx.moveTo(nowX,yOf(risk[N-1]));
+    for(i=0;i<pred.length;i++){ x=nowX + (i/(pred.length-1))*horW; ctx.lineTo(x, yOf(Math.min(1,pred[i]))); }
+    ctx.lineWidth=2; ctx.strokeStyle=predCol; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+
+    ctx.strokeStyle='rgba(233,231,226,.5)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(nowX,0); ctx.lineTo(nowX,H); ctx.stroke();
+    var cy=yOf(risk[N-1]);
+    ctx.fillStyle=stCol;
+    ctx.beginPath(); ctx.arc(nowX,cy,3.5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle=hexA(stCol,.35); ctx.lineWidth=6; ctx.beginPath(); ctx.arc(nowX,cy,3.5,0,Math.PI*2); ctx.stroke();
+
+    var state, cls;
+    if(prob<0.45){ state='Stable'; cls='state-stable'; }
+    else if(prob<0.72){ state='Warning'; cls='state-warning'; }
+    else { state='Critical'; cls='state-critical'; }
+    pill.className='state-pill '+cls; stateText.textContent=state;
+    roProb.style.color = stCol; roProb.textContent = prob.toFixed(2);
+
+    var ttl=null;
+    if(prob<0.72){ for(i=0;i<pred.length;i++){ if(pred[i]>=0.72){ ttl=(i/pred.length)*1.5; break; } } }
+    else { ttl=0; }
+    if(ttl===null){ roTtl.innerHTML='—<small> s</small>'; roTtl.style.color='var(--scr-ink)'; }
+    else { roTtl.innerHTML=ttl.toFixed(1)+'<small> s</small>'; roTtl.style.color=ttl<0.7?getCss('--red'):getCss('--amber'); }
+    roG.innerHTML=lastG.toFixed(1)+'<small> g</small>';
+
+    var sDeg=Math.round(steer[N-1]*60);
+    steerVal.textContent=(sDeg>=0?'+':'')+sDeg+'°'; steerVal.style.color=getCss('--brand');
+    var yDeg=Math.round(yaw[N-1]*45);
+    yawVal.textContent=(yDeg>=0?'+':'')+yDeg+'°/s'; yawVal.style.color=stCol;
+
+    drawMini(steerX,steer,SW,SH,0.85,'rgba(233,231,226,.72)');
+    drawMini(yawX,yaw,YW,YH,0.85,stCol);
+  }
+
+  if(reduce){
+    for(var w=0; w<260; w++) step();
+    draw();
+  } else {
+    var acc=0,last=performance.now();
+    function loop(now){
+      acc += now-last; last=now;
+      while(acc>=16){ step(); acc-=16; }
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+})();
+
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var cv=document.getElementById('trackCanvas'); if(!cv) return;
+  var cx=cv.getContext('2d');
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  var W=0,H=0,sc=1,Wtrack=0,total=0;
+  var SAMP=[];
+  var bg=document.createElement('canvas'), bgx=bg.getContext('2d');
+  var fx=[-0.10,0.15,0.33,0.50,0.67,0.85,1.10];
+  var fy=[0.46,0.46,0.75,0.50,0.25,0.46,0.46];
+  function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  var COL_G,COL_A,COL_R;
+  function colorFor(v){ if(v<0.45)return COL_G; if(v<0.72)return COL_A; return COL_R; }
+  function cmr(a,b,c,d,t){var t2=t*t,t3=t2*t;return [
+    0.5*((2*b[0])+(-a[0]+c[0])*t+(2*a[0]-5*b[0]+4*c[0]-d[0])*t2+(-a[0]+3*b[0]-3*c[0]+d[0])*t3),
+    0.5*((2*b[1])+(-a[1]+c[1])*t+(2*a[1]-5*b[1]+4*c[1]-d[1])*t2+(-a[1]+3*b[1]-3*c[1]+d[1])*t3)];}
+  function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+
+  function build(){
+    var r=cv.getBoundingClientRect(); W=r.width; H=r.height;
+    cv.width=Math.max(1,W*dpr); cv.height=Math.max(1,H*dpr); cx.setTransform(dpr,0,0,dpr,0,0);
+    bg.width=cv.width; bg.height=cv.height; bgx.setTransform(dpr,0,0,dpr,0,0);
+    sc=Math.max(0.55,Math.min(W/1100,1.2));
+    Wtrack=Math.max(15,26*sc);
+    COL_G=css('--green');COL_A=css('--amber');COL_R=css('--red');
+    var P=[]; for(var i=0;i<fx.length;i++)P.push([fx[i]*W,fy[i]*H]);
+    var pts=[];
+    for(var s=0;s<P.length-1;s++){
+      var p0=P[s-1]||P[s],p1=P[s],p2=P[s+1],p3=P[s+2]||P[s+1],steps=34;
+      for(var k=0;k<steps;k++)pts.push(cmr(p0,p1,p2,p3,k/steps));
+    }
+    pts.push(P[P.length-1]);
+    SAMP=[]; var cum=0;
+    for(var i2=0;i2<pts.length;i2++){
+      var pr=pts[i2-1]||pts[i2],nx=pts[i2+1]||pts[i2];
+      var ang=Math.atan2(nx[1]-pr[1],nx[0]-pr[0]);
+      if(i2>0){var dx=pts[i2][0]-pts[i2-1][0],dy=pts[i2][1]-pts[i2-1][1];cum+=Math.sqrt(dx*dx+dy*dy);}
+      SAMP.push({x:pts[i2][0],y:pts[i2][1],a:ang,cum:cum,risk:0,cn:0,col:COL_G});
+    }
+    total=cum;
+    var maxc=0,curv=[];
+    for(var i3=0;i3<SAMP.length;i3++){
+      var a0=SAMP[Math.max(0,i3-3)].a,a1=SAMP[Math.min(SAMP.length-1,i3+3)].a;
+      var da=Math.abs(Math.atan2(Math.sin(a1-a0),Math.cos(a1-a0)));
+      curv.push(da); if(da>maxc)maxc=da;
+    }
+    for(var i4=0;i4<SAMP.length;i4++){
+      var cn=maxc>0?curv[i4]/maxc:0;
+      var risk=Math.max(0,Math.min(1,0.10+0.88*Math.pow(cn,0.85)));
+      SAMP[i4].cn=cn; SAMP[i4].risk=risk; SAMP[i4].col=colorFor(risk);
+    }
+    bgx.clearRect(0,0,W,H); bgx.lineCap='round'; bgx.lineJoin='round';
+    bgx.strokeStyle='#23262c'; bgx.lineWidth=Wtrack;
+    bgx.beginPath(); bgx.moveTo(SAMP[0].x,SAMP[0].y); for(var j=1;j<SAMP.length;j++)bgx.lineTo(SAMP[j].x,SAMP[j].y); bgx.stroke();
+    bgx.setLineDash([8*sc,10*sc]); bgx.strokeStyle='rgba(255,255,255,.26)'; bgx.lineWidth=1.4*sc;
+    bgx.beginPath(); bgx.moveTo(SAMP[0].x,SAMP[0].y); for(j=1;j<SAMP.length;j++)bgx.lineTo(SAMP[j].x,SAMP[j].y); bgx.stroke(); bgx.setLineDash([]);
+    var rw=Math.max(4,6*sc);
+    for(j=1;j<SAMP.length;j++){ bgx.strokeStyle=SAMP[j].col; bgx.globalAlpha=.6; bgx.lineWidth=rw; bgx.lineCap='round';
+      bgx.beginPath(); bgx.moveTo(SAMP[j-1].x,SAMP[j-1].y); bgx.lineTo(SAMP[j].x,SAMP[j].y); bgx.stroke(); }
+    bgx.globalAlpha=1;
+  }
+
+  function at(d){ var lo=0,hi=SAMP.length-1; while(lo<hi){var m=(lo+hi)>>1; if(SAMP[m].cum<d)lo=m+1; else hi=m;} return SAMP[lo]; }
+
+  function drawCar(p,ang,col){
+    cx.save(); cx.translate(p.x,p.y); cx.rotate(ang);
+    var L=30*sc, hw=7*sc, tyL=9*sc, tyW=5.2*sc, tyOff=9.6*sc;
+    cx.shadowColor=col; cx.shadowBlur=15*sc; cx.fillStyle='#0c0e12';
+    [[-L*0.26,-tyOff],[-L*0.26,tyOff],[L*0.30,-tyOff],[L*0.30,tyOff]].forEach(function(o){ rr(cx,o[0]-tyL/2,o[1]-tyW/2,tyL,tyW,2*sc); cx.fill(); });
+    cx.shadowBlur=0;
+    cx.fillStyle='#101318';
+    rr(cx,-L*0.54,-hw*1.55,4.2*sc,hw*3.1,1.5*sc); cx.fill();
+    rr(cx, L*0.46,-hw*1.5,4*sc,hw*3.0,1.5*sc); cx.fill();
+    var bgr=cx.createLinearGradient(-L/2,0,L/2,0); bgr.addColorStop(0,'#262a33'); bgr.addColorStop(0.55,'#191c22'); bgr.addColorStop(1,'#0f1116');
+    cx.fillStyle=bgr;
+    cx.beginPath();
+    cx.moveTo(-L*0.50,-hw*0.88); cx.lineTo(-L*0.08,-hw); cx.lineTo(L*0.20,-hw*0.74);
+    cx.lineTo(L*0.50,-hw*0.26); cx.lineTo(L*0.50,hw*0.26); cx.lineTo(L*0.20,hw*0.74);
+    cx.lineTo(-L*0.08,hw); cx.lineTo(-L*0.50,hw*0.88); cx.closePath(); cx.fill();
+    var fl=cx.createLinearGradient(-L*0.42,0,L*0.42,0);
+    fl.addColorStop(0,'#E5251D'); fl.addColorStop(0.5,'#F26A1E'); fl.addColorStop(1,'#F6B017');
+    cx.fillStyle=fl; rr(cx,-L*0.40,-1.7*sc,L*0.80,3.4*sc,1.6*sc); cx.fill();
+    cx.fillStyle='#E5251D';
+    cx.beginPath(); cx.ellipse(L*0.03,0,4.3*sc,5.4*sc,0,0,Math.PI*2); cx.fill();
+    cx.strokeStyle='#0c0e12'; cx.lineWidth=1.5*sc;
+    cx.beginPath(); cx.arc(L*0.03,0,4.3*sc,-Math.PI/2,Math.PI/2); cx.stroke();
+    cx.restore();
+  }
+  function drawLabel(cur){
+    var state=cur.risk<0.45?'STABLE':(cur.risk<0.72?'WARNING':'CRITICAL');
+    var txt=state+'  ·  '+(0.6+cur.risk*2.0).toFixed(1)+'g';
+    var fs=11*Math.max(sc,.82);
+    cx.font='600 '+fs+'px "IBM Plex Mono", monospace';
+    var pad=7*sc, tw=cx.measureText(txt).width, bw=tw+pad*2, bh=Math.max(18,20*sc);
+    var lx=cur.x-bw/2, ly=cur.y-30*sc-bh;
+    lx=Math.max(6,Math.min(W-bw-6,lx)); ly=Math.max(6,ly);
+    cx.strokeStyle=cur.col; cx.globalAlpha=.55; cx.lineWidth=1; cx.beginPath(); cx.moveTo(cur.x,ly+bh); cx.lineTo(cur.x,cur.y-9*sc); cx.stroke(); cx.globalAlpha=1;
+    cx.fillStyle='rgba(255,255,255,.94)'; rr(cx,lx,ly,bw,bh,5*sc); cx.fill();
+    cx.strokeStyle=cur.col; cx.lineWidth=1.4; rr(cx,lx,ly,bw,bh,5*sc); cx.stroke();
+    cx.fillStyle=cur.col; cx.textBaseline='middle'; cx.textAlign='left'; cx.fillText(txt,lx+pad,ly+bh/2+0.5);
+  }
+
+  var d=0,last=0,trail=[];
+  function frame(now){
+    var dt=Math.min(40,now-(last||now)); last=now;
+    cx.clearRect(0,0,W,H);
+    cx.drawImage(bg,0,0,W,H);
+    var cur=at(d);
+    var spd=(0.17*W)*(1-0.62*cur.cn); if(spd<0.045*W)spd=0.045*W;
+    d+=spd*dt/1000; var wrapped=false;
+    if(d>total){d-=total;wrapped=true;}
+    cur=at(d); if(wrapped)trail=[];
+    trail.push({x:cur.x,y:cur.y,col:cur.col}); if(trail.length>24)trail.shift();
+    var rw=Math.max(4,6*sc);
+    for(var i=1;i<trail.length;i++){ cx.globalAlpha=(i/trail.length)*0.95; cx.strokeStyle=trail[i].col; cx.lineWidth=rw*(0.35+0.65*i/trail.length); cx.lineCap='round';
+      cx.beginPath(); cx.moveTo(trail[i-1].x,trail[i-1].y); cx.lineTo(trail[i].x,trail[i].y); cx.stroke(); }
+    cx.globalAlpha=1;
+    if(cur.x>=-4&&cur.x<=W+4){ drawCar(cur,cur.a,cur.col); drawLabel(cur); }
+    requestAnimationFrame(frame);
+  }
+  function staticFrame(){
+    cx.clearRect(0,0,W,H); cx.drawImage(bg,0,0,W,H);
+    var mi=0,mr=0; for(var i=0;i<SAMP.length;i++)if(SAMP[i].risk>mr){mr=SAMP[i].risk;mi=i;}
+    drawCar(SAMP[mi],SAMP[mi].a,SAMP[mi].col); drawLabel(SAMP[mi]);
+  }
+  build();
+  if(reduce){ staticFrame(); } else { last=performance.now(); requestAnimationFrame(frame); }
+  var rt; window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(function(){ build(); if(reduce)staticFrame(); },150); });
+})();
+
+</script>
+</body>
+</html>
