@@ -21,6 +21,9 @@
 !README.md
 !pyproject.toml
 !logo.png
+!/.github/
+!/.github/workflows/
+!/.github/workflows/*
 !/docs/
 !/docs/*
 !/website/
