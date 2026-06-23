@@ -250,12 +250,12 @@
   .safety li{color:var(--muted);font-size:15px;padding-left:22px;position:relative;text-wrap:pretty}
   .safety li::before{content:"\203A";position:absolute;left:4px;top:0;color:var(--gold-ink);font-family:var(--mono);font-weight:700}
   .safety li b{color:var(--text);font-weight:600}
-  footer{border-top:1px solid var(--line);padding:46px 0 60px;position:relative;z-index:var(--z-base);background:var(--bg-2)}
-  .foot-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
-  .foot-logo{height:72px;width:auto;display:block;margin-bottom:16px}
-  .foot-note{font-family:var(--mono);font-size:12px;color:var(--faint);max-width:56ch;line-height:1.7}
+  footer{border-top:1px solid var(--line);padding:30px 0;position:relative;z-index:var(--z-base);background:var(--bg-2)}
+  .foot-inner{display:flex;justify-content:space-between;align-items:center;gap:22px;flex-wrap:wrap}
+  .foot-note{font-family:var(--mono);font-size:12px;color:var(--faint);line-height:1.7;margin:0;flex:1 1 620px}
   .foot-note b{color:var(--muted);font-weight:600}
-  .foot-links{display:flex;gap:22px;font-family:var(--mono);font-size:12.5px}
+  .foot-note .copy{white-space:nowrap}
+  .foot-links{display:flex;gap:18px;font-family:var(--mono);font-size:12.5px;white-space:nowrap}
   .foot-links a{color:var(--muted)}
   .foot-links a:hover{color:var(--brand-ink)}
   .js .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
@@ -501,11 +501,7 @@ cornerguard/
 
 <footer>
   <div class="wrap foot-inner">
-    <div>
-      <a href="#top" aria-label="CornerGuard ML"><img class="foot-logo" src="logo.png" alt="CornerGuard ML" /></a>
-      <p class="foot-note"><b>CornerGuard ML</b> — predictive vehicle stability warning. Grounded in telemetry, single-track vehicle dynamics, embedded firmware and supervised machine learning. Research prototype; not a safety-certified product.</p>
-      <p class="foot-note">© 2026 wuisabel-gif. All rights reserved.</p>
-    </div>
+    <p class="foot-note"><b>CornerGuard ML</b> — predictive vehicle stability warning. Grounded in telemetry, single-track vehicle dynamics, embedded firmware and supervised machine learning. Research prototype; not a safety-certified product. <span class="copy">© 2026 wuisabel-gif. All rights reserved.</span></p>
     <nav class="foot-links" aria-label="Footer">
       <a href="#how">Architecture</a>
       <a href="#model">Vehicle model</a>
