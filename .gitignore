@@ -7,6 +7,8 @@
 !/cornerguard_ml/*
 !/scripts/
 !/scripts/*
+!/apps/
+!/apps/*
 !/tests/
 !/tests/*
 !/data/

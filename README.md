@@ -107,6 +107,25 @@ python scripts/replay_inference.py \
   --model models/cornerguard_baseline.joblib
 ```
 
+## Desktop Dashboard
+
+CornerGuard includes a local Streamlit dashboard for replaying telemetry logs. It helps a racing team inspect where the car approaches the grip limit, compare steering/yaw response, and see which parts of a run were labeled `stable`, `warning`, or `critical`.
+
+Install the dashboard dependencies:
+
+```bash
+pip install -e ".[ml,dashboard,test]"
+```
+
+Generate a demo log, then launch the dashboard:
+
+```bash
+python scripts/generate_sim_data.py --runs 25 --out data/processed/simulated_cornering.csv
+streamlit run apps/dashboard.py
+```
+
+The app also accepts uploaded CSV files that match the telemetry schema above.
+
 ## Roadmap
 
 1. Add wheel speed, throttle, and brake pressure to the firmware CAN stream.
