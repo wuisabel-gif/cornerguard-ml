@@ -26,6 +26,8 @@
 !/.github/
 !/.github/workflows/
 !/.github/workflows/*
+!/.streamlit/
+!/.streamlit/*
 !/docs/
 !/docs/*
 !/website/
