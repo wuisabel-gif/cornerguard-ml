@@ -111,6 +111,14 @@ python scripts/replay_inference.py \
 
 CornerGuard includes a local Streamlit dashboard for replaying telemetry logs. It helps a racing team inspect where the car approaches the grip limit, compare steering/yaw response, and see which parts of a run were labeled `stable`, `warning`, or `critical`.
 
+<p align="center">
+  <img src="docs/dashboard_preview.jpg" alt="CornerGuard ML dashboard risk timeline and telemetry overview" width="900">
+</p>
+
+<p align="center">
+  <img src="docs/dashboard_preview2.jpg" alt="CornerGuard ML dashboard telemetry plots and state distribution" width="900">
+</p>
+
 Install the dashboard dependencies:
 
 ```bash
