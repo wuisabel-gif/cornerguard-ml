@@ -20,6 +20,7 @@
 !/models/.gitkeep
 !cornerguard.ioc
 !.gitignore
+!.gitattributes
 !README.md
 !pyproject.toml
 !logo.png
